@@ -48,6 +48,8 @@ func (orderBook *OrderBook) MatchOrders() {
 				if sellOrder.Quantity == 0 {
 					heap.Pop(&orderBook.sellOrders)
 				}
+			} else {
+				time.Sleep(5 * time.Second)
 			}
 		}
 		time.Sleep(5 * time.Second)
