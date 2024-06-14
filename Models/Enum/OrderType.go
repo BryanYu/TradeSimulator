@@ -1,8 +1,8 @@
 package Enum
 
-type OrderType int
+type OrderType string
 
 const (
-	Buy  OrderType = 0
-	Sell OrderType = 1
+	Buy  OrderType = "Buy"
+	Sell OrderType = "Sell"
 )

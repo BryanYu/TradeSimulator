@@ -9,16 +9,19 @@ import (
 )
 
 type OrderBook struct {
-	buyOrders  Models.PriorityQueue
-	sellOrders Models.PriorityQueue
-	sender     *TradeLogSender
+	buyOrders   Models.PriorityQueue
+	sellOrders  Models.PriorityQueue
+	sender      *MessageSender
+	latestPrice *Models.LatestPrice
+	tradeLogs   []Models.TradeLog
 }
 
-func NewOrderBook(sender *TradeLogSender) IOrderBook {
+func NewOrderBook(sender *MessageSender) IOrderBook {
 	return &OrderBook{
 		buyOrders:  make(Models.PriorityQueue, 0),
 		sellOrders: make(Models.PriorityQueue, 0),
 		sender:     sender,
+		tradeLogs:  make([]Models.TradeLog, 0),
 	}
 }
 
@@ -32,7 +35,6 @@ func (orderBook *OrderBook) AddOrder(order *Models.Order) {
 }
 
 func (orderBook *OrderBook) MatchOrders() {
-	time.Sleep(10 * time.Second)
 	for {
 		fmt.Printf("WaitTrading...Time:%s \n", time.Now().Format("2006-04-02 15:04:05"))
 		for orderBook.buyOrders.Len() > 0 && orderBook.sellOrders.Len() > 0 {
@@ -44,14 +46,26 @@ func (orderBook *OrderBook) MatchOrders() {
 				quantity := min(buyOrder.Quantity, sellOrder.Quantity)
 				buyOrder.Quantity -= quantity
 				sellOrder.Quantity -= quantity
-				orderBook.sender.Send(Enum.TradeLog, Models.TradeLog{
+
+				tradeLog := Models.TradeLog{
 					StockId:    "Stock1",
 					BuyPrice:   buyOrder.Price,
 					SellPrice:  sellOrder.Price,
 					TradePrice: buyOrder.Price,
 					Quantity:   quantity,
 					TimeStamp:  time.Now().Unix(),
-				})
+				}
+
+				orderBook.tradeLogs = append(orderBook.tradeLogs, tradeLog)
+				orderBook.setLatestPrice("Stock1", buyOrder.Price, quantity)
+
+				// 推送最新成交價
+				latestPrice := orderBook.GetLatestPrice()
+				orderBook.sender.Send(Enum.Price, Enum.GetLatestPrice, latestPrice)
+
+				// 推送交易log
+				orderBook.sender.Send(Enum.TradeLog, Enum.GetTradeLog, tradeLog)
+
 				if buyOrder.Quantity == 0 {
 					heap.Pop(&orderBook.buyOrders)
 				}
@@ -63,4 +77,26 @@ func (orderBook *OrderBook) MatchOrders() {
 		}
 		time.Sleep(10 * time.Second)
 	}
+}
+
+func (orderBook *OrderBook) setLatestPrice(stockId string, tradePrice float64, quantity int) {
+	if orderBook.latestPrice == nil {
+		orderBook.latestPrice = &Models.LatestPrice{
+			StockID:            stockId,
+			TradePrice:         tradePrice,
+			Margin:             0,
+			TotalTradeQuantity: quantity}
+	} else {
+		orderBook.latestPrice.TradePrice = tradePrice
+		orderBook.latestPrice.TotalTradeQuantity += quantity
+		orderBook.latestPrice.Margin = tradePrice - orderBook.latestPrice.TradePrice
+	}
+}
+
+func (orderBook *OrderBook) GetLatestPrice() *Models.LatestPrice {
+	return orderBook.latestPrice
+}
+
+func (orderBook *OrderBook) GetTradeLogs() []Models.TradeLog {
+	return orderBook.tradeLogs
 }

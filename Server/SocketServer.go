@@ -66,19 +66,30 @@ func (socket SocketServer) RegisterEvent(namespace string) {
 	instance.server.OnEvent(namespace, string(Enum.Order), onOrderEvent)
 	instance.server.OnError(namespace, onError)
 	instance.server.OnDisconnect(namespace, onDisConnect)
-
 }
 
-func (socket SocketServer) Send(channelName string, argument interface{}) {
+func (socket SocketServer) Send(channelName Enum.SocketChannel, eventName Enum.SocketEvent, argument interface{}) {
 	instance := getSocketServerInstance()
-	instance.server.BroadcastToRoom("/", channelName, "broadcast", argument)
+	instance.server.BroadcastToRoom("/", string(channelName), string(eventName), &argument)
 }
 func onConnect(s socketio.Conn) error {
 	id := s.ID()
 	instance := getSocketServerInstance()
 	instance.AddContextId(id)
-	s.Join("Stock1_LatestPrice")
-	s.Join("Stock1_TradeLog")
+	s.Join(string(Enum.Price))
+	time.AfterFunc(100*time.Millisecond, func() {
+		latestPrice := instance.orderBook.GetLatestPrice()
+		if latestPrice != nil {
+			instance.Send(Enum.Price, Enum.GetLatestPrice, latestPrice)
+		}
+	})
+	s.Join(string(Enum.TradeLog))
+	time.AfterFunc(100*time.Millisecond, func() {
+		tradeLogs := instance.orderBook.GetTradeLogs()
+		if len(tradeLogs) > 0 {
+			instance.Send(Enum.TradeLog, Enum.GetTradeLogs, tradeLogs)
+		}
+	})
 	return nil
 }
 
