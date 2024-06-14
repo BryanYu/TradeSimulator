@@ -9,4 +9,5 @@ type ISocketServer interface {
 	GetServer() *socketio.Server
 	RegisterEvent(namespace string)
 	Start()
+	Send(channelName string, argument interface{})
 }

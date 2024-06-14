@@ -1,6 +1,7 @@
-package Models
+package Server
 
 import (
+	"TradeSimulator/Models"
 	"TradeSimulator/Models/Enum"
 	"container/heap"
 	"fmt"
@@ -8,18 +9,20 @@ import (
 )
 
 type OrderBook struct {
-	buyOrders  PriorityQueue
-	sellOrders PriorityQueue
+	buyOrders  Models.PriorityQueue
+	sellOrders Models.PriorityQueue
+	sender     *TradeLogSender
 }
 
-func NewOrderBook() *OrderBook {
+func NewOrderBook(sender *TradeLogSender) *OrderBook {
 	return &OrderBook{
-		buyOrders:  make(PriorityQueue, 0),
-		sellOrders: make(PriorityQueue, 0),
+		buyOrders:  make(Models.PriorityQueue, 0),
+		sellOrders: make(Models.PriorityQueue, 0),
+		sender:     sender,
 	}
 }
 
-func (orderBook *OrderBook) AddOrder(order *Order) {
+func (orderBook *OrderBook) AddOrder(order *Models.Order) {
 	switch order.OrderType {
 	case Enum.Buy:
 		heap.Push(&orderBook.buyOrders, order)
@@ -29,6 +32,7 @@ func (orderBook *OrderBook) AddOrder(order *Order) {
 }
 
 func (orderBook *OrderBook) MatchOrders() {
+	time.Sleep(10 * time.Second)
 	for {
 		fmt.Printf("WaitTrading...Time:%s \n", time.Now().Format("2006-04-02 15:04:05"))
 		for orderBook.buyOrders.Len() > 0 && orderBook.sellOrders.Len() > 0 {
@@ -40,18 +44,23 @@ func (orderBook *OrderBook) MatchOrders() {
 				quantity := min(buyOrder.Quantity, sellOrder.Quantity)
 				buyOrder.Quantity -= quantity
 				sellOrder.Quantity -= quantity
-				fmt.Printf("Matched Order: Buy Order %d with Sell Order %d for %d units at price %.2f\n",
-					buyOrder.ID, sellOrder.ID, quantity, sellOrder.Price)
+				orderBook.sender.Send(Enum.TradeLog, Models.TradeLog{
+					StockId:    "Stock1",
+					BuyPrice:   buyOrder.Price,
+					SellPrice:  sellOrder.Price,
+					TradePrice: buyOrder.Price,
+					Quantity:   quantity,
+					TimeStamp:  time.Now().Unix(),
+				})
 				if buyOrder.Quantity == 0 {
 					heap.Pop(&orderBook.buyOrders)
 				}
 				if sellOrder.Quantity == 0 {
 					heap.Pop(&orderBook.sellOrders)
 				}
-			} else {
-				time.Sleep(5 * time.Second)
 			}
+			time.Sleep(10 * time.Second)
 		}
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }

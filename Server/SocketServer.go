@@ -68,6 +68,11 @@ func (socket SocketServer) RegisterEvent(namespace string) {
 	instance.server.OnDisconnect(namespace, onDisConnect)
 
 }
+
+func (socket SocketServer) Send(channelName string, argument interface{}) {
+	instance := getSocketServerInstance()
+	instance.server.BroadcastToRoom("/", channelName, "broadcast", argument)
+}
 func onConnect(s socketio.Conn) error {
 	id := s.ID()
 	instance := getSocketServerInstance()
