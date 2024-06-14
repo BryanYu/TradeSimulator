@@ -5,7 +5,7 @@ import (
 )
 
 type ISocketServer interface {
-	InitialServer()
+	InitialServer(orderBook IOrderBook)
 	GetServer() *socketio.Server
 	RegisterEvent(namespace string)
 	Start()

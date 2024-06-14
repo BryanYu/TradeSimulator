@@ -14,7 +14,7 @@ type OrderBook struct {
 	sender     *TradeLogSender
 }
 
-func NewOrderBook(sender *TradeLogSender) *OrderBook {
+func NewOrderBook(sender *TradeLogSender) IOrderBook {
 	return &OrderBook{
 		buyOrders:  make(Models.PriorityQueue, 0),
 		sellOrders: make(Models.PriorityQueue, 0),

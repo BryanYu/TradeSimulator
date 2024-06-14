@@ -1,12 +1,14 @@
 package Server
 
 import (
+	"TradeSimulator/Models"
 	"TradeSimulator/Models/Enum"
-	"github.com/gofrs/uuid"
+	"encoding/json"
 	socketio "github.com/googollee/go-socket.io"
 	"log"
 	"slices"
 	"sync"
+	"time"
 )
 
 var socketServerInstance *SocketServer
@@ -15,15 +17,12 @@ var once sync.Once
 type SocketServer struct {
 	server     *socketio.Server
 	contextIds []string
-	ID         string
+	orderBook  IOrderBook
 }
 
 func getSocketServerInstance() *SocketServer {
-	id, _ := uuid.NewV4()
 	once.Do(func() {
-		socketServerInstance = &SocketServer{
-			ID: id.String(),
-		}
+		socketServerInstance = &SocketServer{}
 	})
 	return socketServerInstance
 }
@@ -33,10 +32,11 @@ func NewSocketServer() ISocketServer {
 	return instance
 }
 
-func (socket SocketServer) InitialServer() {
+func (socket SocketServer) InitialServer(orderBook IOrderBook) {
 	instance := getSocketServerInstance()
 	instance.server = socketio.NewServer(nil)
 	instance.contextIds = make([]string, 0)
+	instance.orderBook = orderBook
 
 }
 func (socket SocketServer) GetServer() *socketio.Server {
@@ -63,7 +63,7 @@ func (socket SocketServer) RemoveContextId(contextId string) {
 func (socket SocketServer) RegisterEvent(namespace string) {
 	instance := getSocketServerInstance()
 	instance.server.OnConnect(namespace, onConnect)
-	instance.server.OnEvent(namespace, "send", onEvent)
+	instance.server.OnEvent(namespace, string(Enum.Order), onOrderEvent)
 	instance.server.OnError(namespace, onError)
 	instance.server.OnDisconnect(namespace, onDisConnect)
 
@@ -82,15 +82,13 @@ func onConnect(s socketio.Conn) error {
 	return nil
 }
 
-func onEvent(s socketio.Conn, socketEvent string) {
-	switch socketEvent {
-	case string(Enum.Join):
-		break
-	case string(Enum.Order):
-		break
-	default:
-		break
-	}
+func onOrderEvent(s socketio.Conn, orderJson string) {
+	instance := getSocketServerInstance()
+	log.Println(orderJson)
+	var order Models.Order
+	_ = json.Unmarshal([]byte(orderJson), &order)
+	order.Timestamp = time.Now()
+	instance.orderBook.AddOrder(&order)
 }
 
 func onError(s socketio.Conn, err error) {
