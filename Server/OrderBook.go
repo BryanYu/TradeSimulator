@@ -22,6 +22,12 @@ func NewOrderBook(sender *MessageSender) IOrderBook {
 		sellOrders: make(Models.PriorityQueue, 0),
 		sender:     sender,
 		tradeLogs:  make([]Models.TradeLog, 0),
+		latestPrice: &Models.LatestPrice{
+			StockID:            "StockId1",
+			TradePrice:         100,
+			Margin:             0,
+			TotalTradeQuantity: 0,
+		},
 	}
 }
 
@@ -51,13 +57,13 @@ func (orderBook *OrderBook) MatchOrders() {
 					StockId:    "Stock1",
 					BuyPrice:   buyOrder.Price,
 					SellPrice:  sellOrder.Price,
-					TradePrice: buyOrder.Price,
+					TradePrice: sellOrder.Price,
 					Quantity:   quantity,
 					TimeStamp:  time.Now().Unix(),
 				}
 
 				orderBook.tradeLogs = append(orderBook.tradeLogs, tradeLog)
-				orderBook.setLatestPrice("Stock1", buyOrder.Price, quantity)
+				orderBook.setLatestPrice("Stock1", sellOrder.Price, quantity)
 
 				// 推送最新成交價
 				latestPrice := orderBook.GetLatestPrice()
@@ -87,9 +93,9 @@ func (orderBook *OrderBook) setLatestPrice(stockId string, tradePrice float64, q
 			Margin:             0,
 			TotalTradeQuantity: quantity}
 	} else {
-		orderBook.latestPrice.TradePrice = tradePrice
 		orderBook.latestPrice.TotalTradeQuantity += quantity
 		orderBook.latestPrice.Margin = tradePrice - orderBook.latestPrice.TradePrice
+		orderBook.latestPrice.TradePrice = tradePrice
 	}
 }
 

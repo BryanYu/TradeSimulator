@@ -5,8 +5,12 @@ import (
 	"TradeSimulator/Models/Enum"
 	"encoding/json"
 	socketio "github.com/googollee/go-socket.io"
+	"github.com/googollee/go-socket.io/engineio"
+	"github.com/googollee/go-socket.io/engineio/transport"
+	"github.com/googollee/go-socket.io/engineio/transport/polling"
+	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 	"log"
-	"slices"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -15,9 +19,8 @@ var socketServerInstance *SocketServer
 var once sync.Once
 
 type SocketServer struct {
-	server     *socketio.Server
-	contextIds []string
-	orderBook  IOrderBook
+	server    *socketio.Server
+	orderBook IOrderBook
 }
 
 func getSocketServerInstance() *SocketServer {
@@ -33,12 +36,22 @@ func NewSocketServer() ISocketServer {
 }
 
 func (socket SocketServer) InitialServer(orderBook IOrderBook) {
+	var allowOriginFunc = func(r *http.Request) bool {
+		return true
+	}
 	instance := getSocketServerInstance()
-	instance.server = socketio.NewServer(nil)
-	instance.contextIds = make([]string, 0)
+	instance.server = socketio.NewServer(&engineio.Options{
+		Transports: []transport.Transport{
+			&polling.Transport{
+				CheckOrigin: allowOriginFunc,
+			},
+			&websocket.Transport{
+				CheckOrigin: allowOriginFunc,
+			},
+		}})
 	instance.orderBook = orderBook
-
 }
+
 func (socket SocketServer) GetServer() *socketio.Server {
 	instance := getSocketServerInstance()
 	return instance.server
@@ -46,20 +59,15 @@ func (socket SocketServer) GetServer() *socketio.Server {
 
 func (socket SocketServer) Start() {
 	instance := getSocketServerInstance()
-	go instance.server.Serve()
+
+	go func() {
+		if err := instance.server.Serve(); err != nil {
+			log.Fatalf("socketio listen error: %s\n", err)
+		}
+	}()
 	defer instance.server.Close()
 }
 
-func (socket SocketServer) AddContextId(contextId string) {
-	instance := getSocketServerInstance()
-	instance.contextIds = append(socket.contextIds, contextId)
-}
-
-func (socket SocketServer) RemoveContextId(contextId string) {
-	instance := getSocketServerInstance()
-	index := slices.Index(socket.contextIds, contextId)
-	instance.contextIds = append(socket.contextIds[:index], socket.contextIds[index+1:]...)
-}
 func (socket SocketServer) RegisterEvent(namespace string) {
 	instance := getSocketServerInstance()
 	instance.server.OnConnect(namespace, onConnect)
@@ -73,9 +81,7 @@ func (socket SocketServer) Send(channelName Enum.SocketChannel, eventName Enum.S
 	instance.server.BroadcastToRoom("/", string(channelName), string(eventName), &argument)
 }
 func onConnect(s socketio.Conn) error {
-	id := s.ID()
 	instance := getSocketServerInstance()
-	instance.AddContextId(id)
 	s.Join(string(Enum.Price))
 	time.AfterFunc(100*time.Millisecond, func() {
 		latestPrice := instance.orderBook.GetLatestPrice()
@@ -108,7 +114,5 @@ func onError(s socketio.Conn, err error) {
 
 func onDisConnect(s socketio.Conn, reason string) {
 	log.Println("disconnected:", s.ID(), reason)
-	instance := getSocketServerInstance()
-	instance.RemoveContextId(s.ID())
 	s.LeaveAll()
 }

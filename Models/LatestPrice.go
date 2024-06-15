@@ -1,8 +1,8 @@
 package Models
 
 type LatestPrice struct {
-	StockID            string
-	TradePrice         float64
-	Margin             float64
-	TotalTradeQuantity int
+	StockID            string  `json:"stockId"`
+	TradePrice         float64 `json:"tradePrice"`
+	Margin             float64 `json:"margin"`
+	TotalTradeQuantity int     `json:"totalTradeQuantity"`
 }

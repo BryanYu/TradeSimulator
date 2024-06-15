@@ -6,6 +6,10 @@ import (
 	"net/http"
 )
 
+var allowOriginFunc = func(r *http.Request) bool {
+	return true
+}
+
 func main() {
 	socketServer := Server.NewSocketServer()
 	tradeLogSender := Server.NewTradeLogSender(socketServer)
@@ -14,6 +18,7 @@ func main() {
 	socketServer.InitialServer(orderBook)
 	socketServer.RegisterEvent("/")
 	server := socketServer.GetServer()
+
 	go server.Serve()
 	defer server.Close()
 
@@ -26,7 +31,7 @@ func main() {
 	//orderBook.AddOrder(order2)
 	//orderBook.AddOrder(order3)
 	//orderBook.AddOrder(order4)
-
+	//
 	go orderBook.MatchOrders()
 	http.Handle("/socket.io/", server)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
