@@ -6,7 +6,7 @@ import (
 )
 
 type Order struct {
-	ID        string         `json:"id"`        // 訂單ID
+	StockID   string         `json:"stockId"`   // 訂單ID
 	OrderType Enum.OrderType `json:"orderType"` // 訂單類型 (0:Buy, 1:Sell)
 	Price     float64        `json:"price"`     // 下單價格
 	Quantity  int            `json:"quantity"`  // 下單數量

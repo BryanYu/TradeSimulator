@@ -96,6 +96,14 @@ func onConnect(s socketio.Conn) error {
 			instance.Send(Enum.TradeLog, Enum.GetTradeLogs, tradeLogs)
 		}
 	})
+
+	s.Join(string(Enum.BetterFivePrice))
+	time.AfterFunc(100*time.Millisecond, func() {
+		betterFivePrice := instance.orderBook.GetBetterFivePrice()
+		if len(betterFivePrice.Sell) > 0 || len(betterFivePrice.Sell) > 0 {
+			instance.Send(Enum.BetterFivePrice, Enum.GetBetterFivePrice, betterFivePrice)
+		}
+	})
 	return nil
 }
 

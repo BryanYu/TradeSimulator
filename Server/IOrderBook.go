@@ -7,4 +7,5 @@ type IOrderBook interface {
 	MatchOrders()
 	GetLatestPrice() *Models.LatestPrice
 	GetTradeLogs() []Models.TradeLog
+	GetBetterFivePrice() Models.BetterFivePriceResponse
 }

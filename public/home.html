@@ -84,6 +84,29 @@
                 </div>
             </form>
         </div>
+
+        <div class="col-md-8">
+            <h3>買賣五檔報價</h3>
+            <div class="row">
+                <div class="col">
+                    <h4>買進</h4>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="better in betterFivePrice.buy" >
+                            <span>價格: {{ better.price }}</span>
+                            <span>數量: {{ better.totalQuantity }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="col">
+                    <h4>賣出</h4>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center" v-for="better in betterFivePrice.sell">
+                            <span>價格: {{ better.price }}</span>
+                            <span>數量: {{ better.totalQuantity }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
     </div>
 </div>
 
@@ -102,10 +125,20 @@
                 },
                 tradeLogs: [],
                 order: {
-                    id: 'Stock1',
+                    stockId: 'Stock1',
                     orderType: "Buy",
                     price: 0,
                     quantity: 0
+                },
+                betterFivePrice: {
+                    buy : [{
+                        price :0,
+                        totalQuantity:0
+                    }],
+                    sell :[{
+                        price :0,
+                        totalQuantity:0
+                    }]
                 }
             };
         },
@@ -135,15 +168,18 @@
                 this.socket.on('getTradeLog', (tradeLog) => {
                     this.tradeLogs.push(tradeLog);
                 });
+                this.socket.on("getBetterFivePrice", (betterFivePrice) => {
+                    this.betterFivePrice = betterFivePrice
+                })
             },
             formatTimestamp(timestamp) {
                 const date = new Date(timestamp * 1000);
-                return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+                return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
             },
             placeOrder() {
                 this.socket.emit('order', JSON.stringify(this.order));
                 this.order = {
-                    id: 'Stock1',
+                    stockId: 'Stock1',
                     orderType: "Buy",
                     price: 0,
                     quantity: 0
