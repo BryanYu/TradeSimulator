@@ -15,6 +15,7 @@ type OrderBook struct {
 	sender      *MessageSender
 	latestPrice *Models.LatestPrice
 	tradeLogs   []Models.TradeLog
+	openPrice   float64
 }
 
 func NewOrderBook(sender *MessageSender) IOrderBook {
@@ -29,6 +30,7 @@ func NewOrderBook(sender *MessageSender) IOrderBook {
 			Margin:             0,
 			TotalTradeQuantity: 0,
 		},
+		openPrice: 100,
 	}
 }
 
@@ -46,53 +48,89 @@ func (orderBook *OrderBook) AddOrder(order *Models.Order) {
 
 // MatchOrders 交易搓合
 func (orderBook *OrderBook) MatchOrders() {
+	fmt.Printf("WaitTrading...Time:%s \n", time.Now().Format("2006-04-02 15:04:05"))
 	for {
-		fmt.Printf("WaitTrading...Time:%s \n", time.Now().Format("2006-04-02 15:04:05"))
-		for orderBook.buyOrders.Len() > 0 && orderBook.sellOrders.Len() > 0 {
+		if !isOrdersExist(orderBook) {
+			continue
+		}
+		for isOrderPriceMatch(orderBook.buyOrders[0], orderBook.sellOrders[0]) || isOrderHasMarketPrice(orderBook.buyOrders[0], orderBook.sellOrders[0]) {
 			fmt.Printf("TradeSimulator Start...Time:%s \n", time.Now().Format("2006-04-02 15:04:05"))
 			buyOrder := orderBook.buyOrders[0]
 			sellOrder := orderBook.sellOrders[0]
+			quantity := min(buyOrder.Quantity, sellOrder.Quantity)
+			buyOrder.Quantity -= quantity
+			sellOrder.Quantity -= quantity
 
-			if buyOrder.Price >= sellOrder.Price {
-				quantity := min(buyOrder.Quantity, sellOrder.Quantity)
-				buyOrder.Quantity -= quantity
-				sellOrder.Quantity -= quantity
-
-				tradeLog := Models.TradeLog{
-					StockId:    "Stock1",
-					BuyPrice:   buyOrder.Price,
-					SellPrice:  sellOrder.Price,
-					TradePrice: sellOrder.Price,
-					Quantity:   quantity,
-					TimeStamp:  time.Now().Unix(),
-				}
-
-				orderBook.tradeLogs = append(orderBook.tradeLogs, tradeLog)
-				orderBook.setLatestPrice("Stock1", sellOrder.Price, quantity)
-
-				// 推送最新成交價
-				latestPrice := orderBook.GetLatestPrice()
-				orderBook.sender.Send(Enum.Price, Enum.GetLatestPrice, latestPrice)
-
-				// 推送交易log
-				orderBook.sender.Send(Enum.TradeLog, Enum.GetTradeLog, tradeLog)
-
-				// 推送最佳買賣五檔報價
-				betterFiveOrders := orderBook.GetBetterFivePrice()
-				orderBook.sender.Send(Enum.BetterFivePrice, Enum.GetBetterFivePrice, betterFiveOrders)
-
-				if buyOrder.Quantity == 0 {
-					heap.Pop(&orderBook.buyOrders)
-				}
-				if sellOrder.Quantity == 0 {
-					heap.Pop(&orderBook.sellOrders)
-				}
-
+			if buyOrder.Quantity == 0 {
+				heap.Pop(&orderBook.buyOrders)
 			}
-			time.Sleep(10 * time.Second)
+			if sellOrder.Quantity == 0 {
+				heap.Pop(&orderBook.sellOrders)
+			}
+
+			var tradePrice float64
+			var buyPrice float64
+			var sellPrice float64
+			if buyOrder.IsMarketPrice && sellOrder.IsMarketPrice {
+				latestPrice := orderBook.GetLatestPrice()
+				tradePrice = latestPrice.TradePrice
+				buyPrice = latestPrice.TradePrice
+				sellPrice = latestPrice.TradePrice
+			} else if buyOrder.IsMarketPrice {
+				tradePrice = sellOrder.Price
+				buyPrice = sellOrder.Price
+				sellPrice = sellOrder.Price
+			} else if sellOrder.IsMarketPrice {
+				tradePrice = buyOrder.Price
+				buyPrice = buyOrder.Price
+				sellPrice = buyOrder.Price
+			} else {
+				tradePrice = sellOrder.Price
+				buyPrice = buyOrder.Price
+				sellPrice = sellOrder.Price
+			}
+			tradeLog := Models.TradeLog{
+				StockId:    "Stock1",
+				BuyPrice:   buyPrice,
+				SellPrice:  sellPrice,
+				TradePrice: tradePrice,
+				Quantity:   quantity,
+				TimeStamp:  time.Now().Unix(),
+			}
+
+			// 設定最新成交價
+			orderBook.setLatestPrice("Stock1", tradePrice, quantity)
+
+			// 交易紀錄
+			orderBook.tradeLogs = append(orderBook.tradeLogs, tradeLog)
+			// 推送單筆交易log
+			orderBook.sender.Send(Enum.TradeLog, Enum.GetTradeLog, tradeLog)
+
+			// 推送最佳買賣五檔報價
+			betterFiveOrders := orderBook.GetBetterFivePrice()
+			orderBook.sender.Send(Enum.BetterFivePrice, Enum.GetBetterFivePrice, betterFiveOrders)
+			if !isOrdersExist(orderBook) {
+				break
+			}
 		}
-		time.Sleep(10 * time.Second)
+		// 推送最新成交價
+		latestPrice := orderBook.GetLatestPrice()
+		orderBook.sender.Send(Enum.Price, Enum.GetLatestPrice, latestPrice)
+		time.Sleep(1 * time.Second)
 	}
+
+}
+
+func isOrderHasMarketPrice(buyOrder *Models.Order, sellOrder *Models.Order) bool {
+	return buyOrder.IsMarketPrice || sellOrder.IsMarketPrice
+}
+
+func isOrderPriceMatch(buyOrder *Models.Order, sellOrder *Models.Order) bool {
+	return buyOrder.Price >= sellOrder.Price
+}
+
+func isOrdersExist(orderBook *OrderBook) bool {
+	return orderBook.buyOrders.Len() > 0 && orderBook.sellOrders.Len() > 0
 }
 
 // setLatestPrice 設定最新價格資訊
@@ -105,7 +143,7 @@ func (orderBook *OrderBook) setLatestPrice(stockId string, tradePrice float64, q
 			TotalTradeQuantity: quantity}
 	} else {
 		orderBook.latestPrice.TotalTradeQuantity += quantity
-		orderBook.latestPrice.Margin = tradePrice - orderBook.latestPrice.TradePrice
+		orderBook.latestPrice.Margin = orderBook.openPrice - tradePrice
 		orderBook.latestPrice.TradePrice = tradePrice
 	}
 }

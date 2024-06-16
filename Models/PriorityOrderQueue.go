@@ -9,11 +9,25 @@ func (pq PriorityQueue) Len() int {
 }
 
 func (pq PriorityQueue) Less(i, j int) bool {
-	samePriceCompare := pq[i].Price == pq[j].Price && pq[i].Timestamp.Before(pq[j].Timestamp)
-	if pq[i].OrderType == Enum.Buy {
-		return (pq[i].Price > pq[j].Price) || samePriceCompare
+	p1 := pq[i]
+	p2 := pq[j]
+
+	samePriceCompare := p1.Price == p2.Price && p1.Timestamp.Before(p2.Timestamp)
+	if p1.OrderType == Enum.Buy {
+		if p1.IsMarketPrice {
+			return true
+		} else {
+			return pq[i].Price > pq[j].Price || samePriceCompare
+		}
 	}
-	return (pq[i].Price < pq[j].Price) || samePriceCompare
+	if p1.OrderType == Enum.Sell {
+		if p1.IsMarketPrice {
+			return true
+		} else {
+			return (pq[i].Price < pq[j].Price) || samePriceCompare
+		}
+	}
+	return false
 }
 
 func (pq PriorityQueue) Swap(i, j int) {

@@ -82,27 +82,26 @@ func (socket SocketServer) Send(channelName Enum.SocketChannel, eventName Enum.S
 }
 func onConnect(s socketio.Conn) error {
 	instance := getSocketServerInstance()
+
 	s.Join(string(Enum.Price))
+	s.Join(string(Enum.TradeLog))
+	s.Join(string(Enum.BetterFivePrice))
+	s.Join(s.ID())
 	time.AfterFunc(100*time.Millisecond, func() {
 		latestPrice := instance.orderBook.GetLatestPrice()
 		if latestPrice != nil {
-			instance.Send(Enum.Price, Enum.GetLatestPrice, latestPrice)
+			instance.server.BroadcastToRoom("/", s.ID(), string(Enum.GetLatestPrice), latestPrice)
 		}
-	})
-	s.Join(string(Enum.TradeLog))
-	time.AfterFunc(100*time.Millisecond, func() {
 		tradeLogs := instance.orderBook.GetTradeLogs()
 		if len(tradeLogs) > 0 {
-			instance.Send(Enum.TradeLog, Enum.GetTradeLogs, tradeLogs)
+			instance.server.BroadcastToRoom("/", s.ID(), string(Enum.GetTradeLogs), tradeLogs)
 		}
-	})
 
-	s.Join(string(Enum.BetterFivePrice))
-	time.AfterFunc(100*time.Millisecond, func() {
 		betterFivePrice := instance.orderBook.GetBetterFivePrice()
-		if len(betterFivePrice.Sell) > 0 || len(betterFivePrice.Sell) > 0 {
-			instance.Send(Enum.BetterFivePrice, Enum.GetBetterFivePrice, betterFivePrice)
+		if len(betterFivePrice.Buy) > 0 || len(betterFivePrice.Sell) > 0 {
+			instance.server.BroadcastToRoom("/", s.ID(), string(Enum.GetBetterFivePrice), betterFivePrice)
 		}
+
 	})
 	return nil
 }
