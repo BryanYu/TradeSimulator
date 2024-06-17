@@ -141,7 +141,7 @@
         },
         methods: {
             setupSocket() {
-                const socket = io("http://127.0.0.1:8000", {transport : 'websocket'});
+                const socket = io(":8000", {transport : 'websocket'});
                 this.socket = socket;
                 socket.on("connect", () => {
                     console.log(`connected with transport ${socket.io.engine.transport.name}`);
