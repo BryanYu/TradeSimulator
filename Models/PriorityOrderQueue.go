@@ -14,17 +14,17 @@ func (pq PriorityQueue) Less(i, j int) bool {
 
 	samePriceCompare := p1.Price == p2.Price && p1.Timestamp.Before(p2.Timestamp)
 	if p1.OrderType == Enum.Buy {
-		if p1.IsMarketPrice {
+		if p1.IsMarketPrice || p2.IsMarketPrice {
 			return true
 		} else {
-			return pq[i].Price > pq[j].Price || samePriceCompare
+			return p1.Price > p2.Price || samePriceCompare
 		}
 	}
 	if p1.OrderType == Enum.Sell {
-		if p1.IsMarketPrice {
+		if p1.IsMarketPrice || p2.IsMarketPrice {
 			return true
 		} else {
-			return (pq[i].Price < pq[j].Price) || samePriceCompare
+			return (p1.Price < p2.Price) || samePriceCompare
 		}
 	}
 	return false

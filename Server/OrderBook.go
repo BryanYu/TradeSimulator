@@ -170,24 +170,48 @@ func (orderBook *OrderBook) GetBetterFivePrice() Models.BetterFivePriceResponse 
 
 func getBetterFivePrice(orderQueue Models.PriorityQueue, orderType Enum.OrderType) []Models.BetterFivePrice {
 	priceGroups := make(map[float64]int)
+	hasMarketPrice := make(map[bool]int)
 	for _, order := range orderQueue {
-		priceGroups[order.Price] += order.Quantity
+		if order.IsMarketPrice {
+			hasMarketPrice[order.IsMarketPrice] += order.Quantity
+		} else {
+			priceGroups[order.Price] += order.Quantity
+		}
 	}
 	betterFivePrice := make([]Models.BetterFivePrice, 0)
-
 	for price, totalQuantity := range priceGroups {
 		betterFivePrice = append(betterFivePrice, Models.BetterFivePrice{
 			Price:         price,
 			TotalQuantity: totalQuantity,
+			IsMarketPrice: false,
 		})
 	}
+
+	if totalQuantity, find := hasMarketPrice[true]; find {
+		betterFivePrice = append(betterFivePrice, Models.BetterFivePrice{
+			Price:         0,
+			TotalQuantity: totalQuantity,
+			IsMarketPrice: true,
+		})
+	}
+
 	if orderType == Enum.Buy {
 		sort.Slice(betterFivePrice, func(i, j int) bool {
-			return betterFivePrice[i].Price > betterFivePrice[j].Price
+			if betterFivePrice[i].IsMarketPrice {
+				return true
+			} else if betterFivePrice[i].Price > betterFivePrice[j].Price {
+				return true
+			}
+			return false
 		})
 	} else {
 		sort.Slice(betterFivePrice, func(i, j int) bool {
-			return betterFivePrice[i].Price < betterFivePrice[j].Price
+			if betterFivePrice[i].IsMarketPrice {
+				return true
+			} else if betterFivePrice[i].Price < betterFivePrice[j].Price {
+				return true
+			}
+			return false
 		})
 	}
 	if len(betterFivePrice) >= 5 {

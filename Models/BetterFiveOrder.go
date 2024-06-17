@@ -8,4 +8,5 @@ type BetterFivePriceResponse struct {
 type BetterFivePrice struct {
 	Price         float64 `json:"price"`
 	TotalQuantity int     `json:"totalQuantity"`
+	IsMarketPrice bool    `json:"-"`
 }
