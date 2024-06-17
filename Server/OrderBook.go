@@ -143,7 +143,7 @@ func (orderBook *OrderBook) setLatestPrice(stockId string, tradePrice float64, q
 			TotalTradeQuantity: quantity}
 	} else {
 		orderBook.latestPrice.TotalTradeQuantity += quantity
-		orderBook.latestPrice.Margin = orderBook.openPrice - tradePrice
+		orderBook.latestPrice.Margin = tradePrice - orderBook.openPrice
 		orderBook.latestPrice.TradePrice = tradePrice
 	}
 }
