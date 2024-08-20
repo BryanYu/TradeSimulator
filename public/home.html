@@ -141,7 +141,11 @@
         },
         methods: {
             setupSocket() {
-                const socket = io(":8000", {transport : 'websocket'});
+
+                //const websocketUrl = "https://e446-36-230-17-251.ngrok-free.app"
+                const websocketUrl = "http://localhost:8000"
+                const socket = io(websocketUrl, {transport : 'websocket'})
+
                 this.socket = socket;
                 socket.on("connect", () => {
                     console.log(`connected with transport ${socket.io.engine.transport.name}`);

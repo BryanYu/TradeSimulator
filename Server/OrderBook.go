@@ -126,7 +126,7 @@ func isOrderHasMarketPrice(buyOrder *Models.Order, sellOrder *Models.Order) bool
 }
 
 func isOrderPriceMatch(buyOrder *Models.Order, sellOrder *Models.Order) bool {
-	return buyOrder.Price >= sellOrder.Price
+	return buyOrder.Price >= sellOrder.Price || buyOrder.IsMarketPrice || sellOrder.IsMarketPrice
 }
 
 func isOrdersExist(orderBook *OrderBook) bool {
